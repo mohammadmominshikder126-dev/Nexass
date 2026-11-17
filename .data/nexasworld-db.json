@@ -1,0 +1,275 @@
+{
+  "users": {
+    "usr_demo_83100": {
+      "id": "usr_demo_83100",
+      "phone": "+8801789083100",
+      "fullName": "Arif Rahman",
+      "referralCode": "NXW83100",
+      "rechargeBalance": 2500,
+      "withdrawalBalance": 900,
+      "invitedEarnings": 430,
+      "payoutMethod": "bKash",
+      "payoutAccount": "01789083100",
+      "lastSalaryClaimDate": "2026-11-17",
+      "redeemedCodes": [],
+      "createdAt": "2026-11-12T18:07:50.473Z",
+      "passwordHash": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
+      "bankHolderName": "Arif Rahman",
+      "bankName": "bKash",
+      "bankAccountNumber": "01789083100",
+      "bankCardVerified": true
+    },
+    "usr_dc5ae133a69e": {
+      "id": "usr_dc5ae133a69e",
+      "phone": "+8801923948150",
+      "fullName": "naym",
+      "referralCode": "NXW49691",
+      "rechargeBalance": 0,
+      "withdrawalBalance": 0,
+      "invitedEarnings": 0,
+      "payoutMethod": "bKash",
+      "payoutAccount": "01923948150",
+      "lastSalaryClaimDate": null,
+      "redeemedCodes": [],
+      "createdAt": "2026-11-17T18:37:32.159Z",
+      "passwordHash": "1441605b9c13809e93a512dbd388b777ab906af4bfc2a4f2028d23cbf34b1d61",
+      "bankHolderName": "naym",
+      "bankName": "bKash",
+      "bankAccountNumber": "01923948150",
+      "bankCardVerified": true
+    }
+  },
+  "sessions": {
+    "demo_session_token": "usr_demo_83100",
+    "tok_f24d965e2589ced37c61354c4274e10e": "usr_dc5ae133a69e"
+  },
+  "products": {
+    "usr_demo_83100": [
+      {
+        "id": "prd_845d8b86b870",
+        "planId": "vip-1",
+        "tier": "VIP 1",
+        "modelName": "Obsidian Coupe GT",
+        "price": 500,
+        "dailyIncome": 10,
+        "totalIncome": 300,
+        "validityDays": 30,
+        "daysClaimed": 0,
+        "lastClaimedAt": null,
+        "purchasedAt": "2026-11-17T18:24:23.847Z",
+        "image": "/src/assets/images/vip_coupe_gt_1794938615406.jpg",
+        "status": "Active"
+      },
+      {
+        "id": "prd_e4b7c73bbf0c",
+        "planId": "vip-1",
+        "tier": "VIP 1",
+        "modelName": "Obsidian Coupe GT",
+        "price": 500,
+        "dailyIncome": 10,
+        "totalIncome": 300,
+        "validityDays": 30,
+        "daysClaimed": 0,
+        "lastClaimedAt": null,
+        "purchasedAt": "2026-11-17T18:14:25.527Z",
+        "image": "/src/assets/images/vip_coupe_gt_1794938615406.jpg",
+        "status": "Active"
+      },
+      {
+        "id": "prd_seed_01",
+        "planId": "vip-1",
+        "tier": "VIP 1",
+        "modelName": "Obsidian Coupe GT",
+        "price": 500,
+        "dailyIncome": 25,
+        "totalIncome": 750,
+        "validityDays": 30,
+        "daysClaimed": 2,
+        "lastClaimedAt": "2026-11-16",
+        "purchasedAt": "2026-11-15T18:07:50.473Z",
+        "image": "/src/assets/images/vip_coupe_gt_1794938615406.jpg",
+        "status": "Active"
+      }
+    ],
+    "usr_dc5ae133a69e": []
+  },
+  "transactions": {
+    "usr_demo_83100": [
+      {
+        "id": "txn_16f09b222ecb",
+        "type": "Recharge",
+        "amount": 500,
+        "method": "Nagad",
+        "txId": "কাইইহবসি",
+        "status": "Completed",
+        "note": "Deposited via Nagad (GOPAY-NG) · TrxID কাইইহবসি",
+        "createdAt": "2026-11-17T18:27:59.462Z"
+      },
+      {
+        "id": "txn_2575cda76e47",
+        "type": "Daily Salary",
+        "amount": 50,
+        "status": "Completed",
+        "note": "Daily check-in salary (3 valid referrals)",
+        "createdAt": "2026-11-17T18:24:37.071Z"
+      },
+      {
+        "id": "txn_c3914b66195d",
+        "type": "Investment",
+        "amount": 500,
+        "status": "Completed",
+        "note": "Activated VIP 1 — Obsidian Coupe GT",
+        "createdAt": "2026-11-17T18:24:23.847Z"
+      },
+      {
+        "id": "txn_2f357c05c095",
+        "type": "Recharge",
+        "amount": 500,
+        "method": "USDT-BEP20",
+        "txId": "NX39308229",
+        "status": "Completed",
+        "note": "Deposited via USDT-BEP20",
+        "createdAt": "2026-11-17T18:15:08.229Z"
+      },
+      {
+        "id": "txn_744ee078c16e",
+        "type": "Investment",
+        "amount": 500,
+        "status": "Completed",
+        "note": "Activated VIP 1 — Obsidian Coupe GT",
+        "createdAt": "2026-11-17T18:14:25.527Z"
+      },
+      {
+        "id": "txn_seed_01",
+        "type": "Recharge",
+        "amount": 3000,
+        "method": "bKash",
+        "txId": "BKX904821A",
+        "status": "Completed",
+        "note": "Wallet top-up via bKash Merchant",
+        "createdAt": "2026-11-12T18:07:50.473Z"
+      },
+      {
+        "id": "txn_seed_02",
+        "type": "Investment",
+        "amount": 500,
+        "status": "Completed",
+        "note": "Activated VIP 1 — Obsidian Coupe GT",
+        "createdAt": "2026-11-15T18:07:50.473Z"
+      },
+      {
+        "id": "txn_seed_03",
+        "type": "Referral Bonus",
+        "amount": 300,
+        "status": "Completed",
+        "note": "Level 1 Commission (20%) from +88019****214",
+        "createdAt": "2026-11-15T18:07:50.473Z"
+      },
+      {
+        "id": "txn_seed_04",
+        "type": "Daily Income",
+        "amount": 25,
+        "status": "Completed",
+        "note": "VIP 1 daily return payout",
+        "createdAt": "2026-11-16T18:07:50.473Z"
+      }
+    ],
+    "usr_dc5ae133a69e": [
+      {
+        "id": "dep_5933c16947c8",
+        "type": "Recharge",
+        "amount": 500,
+        "method": "Nagad",
+        "channel": "GOPAY-NG",
+        "txId": "কাইইহবসি",
+        "status": "Processing",
+        "note": "Send Money via Nagad (GOPAY-NG) · TrxID কাইইহবসি (অ্যাডমিন যাচাইয়ের অপেক্ষায়)",
+        "createdAt": "2026-11-17T18:44:24.830Z"
+      }
+    ]
+  },
+  "team": {
+    "usr_demo_83100": [
+      {
+        "id": "tm_seed_01",
+        "phone": "+8801922014214",
+        "level": 1,
+        "joinedAt": "2026-11-15T18:07:50.473Z",
+        "validVip": true,
+        "totalInvested": 1500,
+        "commissionEarned": 300
+      },
+      {
+        "id": "tm_seed_02",
+        "phone": "+8801841229901",
+        "level": 1,
+        "joinedAt": "2026-11-15T18:07:50.473Z",
+        "validVip": true,
+        "totalInvested": 500,
+        "commissionEarned": 100
+      },
+      {
+        "id": "tm_seed_03",
+        "phone": "+8801611487720",
+        "level": 2,
+        "joinedAt": "2026-11-16T18:07:50.473Z",
+        "validVip": true,
+        "totalInvested": 1500,
+        "commissionEarned": 30
+      }
+    ],
+    "usr_dc5ae133a69e": []
+  },
+  "deposits": [
+    {
+      "id": "dep_5933c16947c8",
+      "userId": "usr_dc5ae133a69e",
+      "userPhone": "+8801923948150",
+      "userName": "naym",
+      "amount": 500,
+      "bonusAmount": 0,
+      "method": "Nagad",
+      "channel": "GOPAY-NG",
+      "txId": "কাইইহবসি",
+      "status": "Pending",
+      "createdAt": "2026-11-17T18:44:24.830Z"
+    }
+  ],
+  "withdrawals": [],
+  "config": {
+    "telegramGroupUrl": "https://t.me/nexasworld_official",
+    "supportUrl": "https://t.me/nexasworld_support",
+    "welcomeNotice": "অফিসিয়াল টেলিগ্রাম গ্রুপে জয়েন করুন এবং যেকোনো ডিপোজিট বা উইথড্র সহায়তার জন্য সাপোর্টে যোগাযোগ করুন।",
+    "registrationBonus": 150,
+    "paymentNumbers": [
+      {
+        "id": "pn_bk_1",
+        "method": "bKash",
+        "channelLabel": "GOPAY-BK",
+        "number": "01964115795",
+        "typeLabel": "পার্সোনাল (সেন্ড মানি)"
+      },
+      {
+        "id": "pn_ng_1",
+        "method": "Nagad",
+        "channelLabel": "GOPAY-NG",
+        "number": "01964115795",
+        "typeLabel": "পার্সোনাল (সেন্ড মানি)"
+      },
+      {
+        "id": "pn_usdt_1",
+        "method": "USDT",
+        "channelLabel": "USDT-TRC20",
+        "number": "TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE",
+        "typeLabel": "TRC20 Wallet"
+      },
+      {
+        "id": "pn_usdt_2",
+        "method": "USDT",
+        "channelLabel": "USDT-BEP20",
+        "number": "0x94F2bA8c0149E72d18c48A3091B622F911a084E2",
+        "typeLabel": "BEP20 Wallet"
+      }
+    ]
+  }
+}

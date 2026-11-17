@@ -1,0 +1,373 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // Global Hardened Primitives
+    // =========================================================================
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isVerifiedUser() && request.auth.uid == userId;
+    }
+
+    function isBootstrapAdmin() {
+      return isVerifiedUser() && request.auth.token.email == 'nexasworld5@gmail.com';
+    }
+
+    function isAdmin() {
+      return isBootstrapAdmin() ||
+        (isVerifiedUser() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+    }
+
+    // =========================================================================
+    // Validation Blueprints
+    // =========================================================================
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll([
+        'uid', 'phone', 'fullName', 'referralCode',
+        'rechargeBalance', 'withdrawalBalance', 'invitedEarnings',
+        'payoutMethod', 'bankCardVerified', 'redeemedCodes', 'createdAt', 'updatedAt'
+      ])
+      && data.keys().hasOnly([
+        'uid', 'phone', 'fullName', 'referralCode', 'referredBy',
+        'rechargeBalance', 'withdrawalBalance', 'invitedEarnings',
+        'payoutMethod', 'payoutAccount', 'bankHolderName', 'bankName',
+        'bankAccountNumber', 'bankCardVerified', 'lastSalaryClaimDate',
+        'redeemedCodes', 'createdAt', 'updatedAt'
+      ])
+      && data.uid is string && data.uid == userId && isValidId(data.uid)
+      && data.phone is string && data.phone.size() >= 5 && data.phone.size() <= 32
+      && data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 100
+      && data.referralCode is string && data.referralCode.size() >= 4 && data.referralCode.size() <= 24
+      && (!('referredBy' in data) || (data.referredBy is string && data.referredBy.size() <= 128))
+      && data.rechargeBalance is number && data.rechargeBalance >= 0
+      && data.withdrawalBalance is number && data.withdrawalBalance >= 0
+      && data.invitedEarnings is number && data.invitedEarnings >= 0
+      && data.payoutMethod in ['bKash', 'Nagad', 'Bank', 'USDT-TRC20', 'USDT-BEP20']
+      && (!('payoutAccount' in data) || (data.payoutAccount is string && data.payoutAccount.size() <= 128))
+      && (!('bankHolderName' in data) || (data.bankHolderName is string && data.bankHolderName.size() <= 100))
+      && (!('bankName' in data) || (data.bankName is string && data.bankName.size() <= 40))
+      && (!('bankAccountNumber' in data) || (data.bankAccountNumber is string && data.bankAccountNumber.size() <= 128))
+      && data.bankCardVerified is bool
+      && (!('lastSalaryClaimDate' in data) || data.lastSalaryClaimDate == null || (data.lastSalaryClaimDate is string && data.lastSalaryClaimDate.size() <= 32))
+      && data.redeemedCodes is list && data.redeemedCodes.size() <= 50
+      && (data.redeemedCodes.size() == 0 || data.redeemedCodes[0] is string)
+      && data.createdAt is timestamp
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidUserProduct(data, userId, productId) {
+      return data.keys().hasAll([
+        'id', 'userId', 'planId', 'tier', 'modelName',
+        'price', 'dailyIncome', 'totalIncome', 'validityDays',
+        'daysClaimed', 'purchasedAt', 'status'
+      ])
+      && data.keys().hasOnly([
+        'id', 'userId', 'planId', 'tier', 'modelName',
+        'price', 'dailyIncome', 'totalIncome', 'validityDays',
+        'daysClaimed', 'lastClaimedAt', 'purchasedAt', 'image', 'status'
+      ])
+      && data.id is string && data.id == productId && isValidId(data.id)
+      && data.userId is string && data.userId == userId && isValidId(data.userId)
+      && data.planId is string && data.planId.size() >= 1 && data.planId.size() <= 64
+      && data.tier is string && data.tier.size() >= 1 && data.tier.size() <= 32
+      && data.modelName is string && data.modelName.size() >= 1 && data.modelName.size() <= 100
+      && data.price is number && data.price > 0
+      && data.dailyIncome is number && data.dailyIncome > 0
+      && data.totalIncome is number && data.totalIncome > 0
+      && data.validityDays is number && data.validityDays > 0 && data.validityDays <= 365
+      && data.daysClaimed is number && data.daysClaimed >= 0 && data.daysClaimed <= data.validityDays
+      && (!('lastClaimedAt' in data) || data.lastClaimedAt == null || data.lastClaimedAt is timestamp)
+      && data.purchasedAt is timestamp
+      && (!('image' in data) || (data.image is string && data.image.size() <= 300))
+      && data.status in ['Active', 'Completed'];
+    }
+
+    function isValidTransaction(data, userId, transactionId) {
+      return data.keys().hasAll(['id', 'userId', 'type', 'amount', 'status', 'note', 'createdAt'])
+      && data.keys().hasOnly([
+        'id', 'userId', 'type', 'amount', 'method', 'channel',
+        'accountRef', 'txId', 'status', 'note', 'createdAt'
+      ])
+      && data.id is string && data.id == transactionId && isValidId(data.id)
+      && data.userId is string && data.userId == userId && isValidId(data.userId)
+      && data.type in [
+        'Recharge', 'Withdraw', 'Investment', 'Daily Income',
+        'Referral Bonus', 'Registration Bonus', 'Gift Code', 'Daily Salary'
+      ]
+      && data.amount is number && data.amount >= 0
+      && (!('method' in data) || (data.method is string && data.method.size() <= 40))
+      && (!('channel' in data) || (data.channel is string && data.channel.size() <= 64))
+      && (!('accountRef' in data) || (data.accountRef is string && data.accountRef.size() <= 128))
+      && (!('txId' in data) || (data.txId is string && data.txId.size() <= 128))
+      && data.status in ['Completed', 'Processing', 'Rejected']
+      && data.note is string && data.note.size() >= 1 && data.note.size() <= 300
+      && data.createdAt is timestamp;
+    }
+
+    function isValidDeposit(data, depositId) {
+      return data.keys().hasAll([
+        'id', 'userId', 'userPhone', 'userName', 'amount', 'bonusAmount',
+        'method', 'channel', 'txId', 'status', 'createdAt', 'updatedAt'
+      ])
+      && data.keys().hasOnly([
+        'id', 'userId', 'userPhone', 'userName', 'amount', 'bonusAmount',
+        'method', 'channel', 'txId', 'status', 'createdAt', 'updatedAt'
+      ])
+      && data.id is string && data.id == depositId && isValidId(data.id)
+      && data.userId is string && isValidId(data.userId)
+      && data.userPhone is string && data.userPhone.size() >= 5 && data.userPhone.size() <= 32
+      && data.userName is string && data.userName.size() >= 1 && data.userName.size() <= 100
+      && data.amount is number && data.amount >= 400 && data.amount <= 1000000
+      && data.bonusAmount is number && data.bonusAmount >= 0 && data.bonusAmount <= 50000
+      && data.method is string && data.method.size() >= 1 && data.method.size() <= 40
+      && data.channel is string && data.channel.size() >= 1 && data.channel.size() <= 64
+      && data.txId is string && data.txId.size() >= 4 && data.txId.size() <= 128
+      && data.status in ['Pending', 'Confirmed', 'Rejected']
+      && data.createdAt is timestamp
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidWithdrawal(data, withdrawId) {
+      return data.keys().hasAll([
+        'id', 'userId', 'userPhone', 'userName', 'amount', 'method',
+        'accountNumber', 'bankHolderName', 'bankName', 'status', 'createdAt', 'updatedAt'
+      ])
+      && data.keys().hasOnly([
+        'id', 'userId', 'userPhone', 'userName', 'amount', 'method',
+        'accountNumber', 'bankHolderName', 'bankName', 'status', 'createdAt', 'updatedAt'
+      ])
+      && data.id is string && data.id == withdrawId && isValidId(data.id)
+      && data.userId is string && isValidId(data.userId)
+      && data.userPhone is string && data.userPhone.size() >= 5 && data.userPhone.size() <= 32
+      && data.userName is string && data.userName.size() >= 1 && data.userName.size() <= 100
+      && data.amount is number && data.amount >= 200 && data.amount <= 1000000
+      && data.method in ['bKash', 'Nagad', 'Bank', 'USDT-TRC20', 'USDT-BEP20']
+      && data.accountNumber is string && data.accountNumber.size() >= 4 && data.accountNumber.size() <= 128
+      && data.bankHolderName is string && data.bankHolderName.size() >= 1 && data.bankHolderName.size() <= 100
+      && data.bankName is string && data.bankName.size() >= 1 && data.bankName.size() <= 64
+      && data.status in ['Processing', 'Approved', 'Rejected']
+      && data.createdAt is timestamp
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidAppConfig(data) {
+      return data.keys().hasAll([
+        'telegramGroupUrl', 'supportUrl', 'welcomeNotice',
+        'registrationBonus', 'paymentNumbers', 'updatedAt'
+      ])
+      && data.keys().hasOnly([
+        'telegramGroupUrl', 'supportUrl', 'welcomeNotice',
+        'registrationBonus', 'paymentNumbers', 'updatedAt'
+      ])
+      && data.telegramGroupUrl is string && data.telegramGroupUrl.size() <= 300
+      && data.supportUrl is string && data.supportUrl.size() <= 300
+      && data.welcomeNotice is string && data.welcomeNotice.size() <= 500
+      && data.registrationBonus is number && data.registrationBonus >= 0 && data.registrationBonus <= 10000
+      && data.paymentNumbers is list && data.paymentNumbers.size() <= 20
+      && (data.paymentNumbers.size() == 0 || data.paymentNumbers[0] is map)
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidReferralIndex(data, referralCode) {
+      return data.keys().hasAll(['ownerId', 'referralCode', 'createdAt'])
+      && data.keys().hasOnly(['ownerId', 'referralCode', 'createdAt'])
+      && data.ownerId is string && isValidId(data.ownerId)
+      && data.referralCode is string && data.referralCode == referralCode
+      && data.referralCode.size() >= 4 && data.referralCode.size() <= 24
+      && data.createdAt is timestamp;
+    }
+
+    function isValidAdminRole(data) {
+      return data.keys().hasAll(['email', 'createdAt'])
+      && data.keys().hasOnly(['email', 'createdAt'])
+      && data.email is string && data.email.size() >= 5 && data.email.size() <= 128
+      && data.createdAt is timestamp;
+    }
+
+    // =========================================================================
+    // Collection Match Rules
+    // =========================================================================
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isBootstrapAdmin();
+
+      allow create: if isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().rechargeBalance <= 150
+        && incoming().withdrawalBalance == 0
+        && incoming().invitedEarnings == 0
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isValidId(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (
+            isOwner(userId)
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'fullName', 'payoutMethod', 'payoutAccount',
+              'bankHolderName', 'bankName', 'bankAccountNumber',
+              'bankCardVerified', 'updatedAt'
+            ])
+          )
+        );
+
+      allow delete: if false;
+
+      match /products/{productId} {
+        allow get: if isValidId(userId) && isValidId(productId) && (isOwner(userId) || isAdmin());
+        allow list: if isValidId(userId) && (isOwner(userId) || isBootstrapAdmin());
+
+        allow create: if isValidId(userId) && isValidId(productId)
+          && (isOwner(userId) || isAdmin())
+          && exists(/databases/$(database)/documents/users/$(userId))
+          && isValidUserProduct(incoming(), userId, productId)
+          && incoming().purchasedAt == request.time
+          && incoming().status == 'Active';
+
+        allow update: if isValidId(userId) && isValidId(productId)
+          && isValidUserProduct(incoming(), userId, productId)
+          && incoming().id == existing().id
+          && incoming().userId == existing().userId
+          && incoming().purchasedAt == existing().purchasedAt
+          && (
+            isAdmin() ||
+            (
+              isOwner(userId)
+              && existing().status != 'Completed'
+              && incoming().diff(existing()).affectedKeys().hasOnly(['daysClaimed', 'lastClaimedAt', 'status'])
+              && incoming().lastClaimedAt == request.time
+            )
+          );
+
+        allow delete: if false;
+      }
+
+      match /transactions/{transactionId} {
+        allow get: if isValidId(userId) && isValidId(transactionId) && (isOwner(userId) || isAdmin());
+        allow list: if isValidId(userId) && (isOwner(userId) || isBootstrapAdmin());
+
+        allow create: if isValidId(userId) && isValidId(transactionId)
+          && (isOwner(userId) || isAdmin())
+          && exists(/databases/$(database)/documents/users/$(userId))
+          && isValidTransaction(incoming(), userId, transactionId)
+          && incoming().createdAt == request.time;
+
+        allow update: if isAdmin()
+          && isValidId(userId) && isValidId(transactionId)
+          && isValidTransaction(incoming(), userId, transactionId)
+          && incoming().id == existing().id
+          && incoming().userId == existing().userId
+          && incoming().createdAt == existing().createdAt;
+
+        allow delete: if false;
+      }
+    }
+
+    match /deposits/{depositId} {
+      allow get: if isValidId(depositId) && isVerifiedUser() && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isVerifiedUser() && (existing().userId == request.auth.uid || isBootstrapAdmin());
+
+      allow create: if isValidId(depositId)
+        && isVerifiedUser()
+        && isValidDeposit(incoming(), depositId)
+        && incoming().userId == request.auth.uid
+        && incoming().status == 'Pending'
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+
+      allow update: if isValidId(depositId)
+        && isValidDeposit(incoming(), depositId)
+        && incoming().id == existing().id
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && isAdmin()
+        && existing().status == 'Pending';
+
+      allow delete: if false;
+    }
+
+    match /withdrawals/{withdrawId} {
+      allow get: if isValidId(withdrawId) && isVerifiedUser() && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isVerifiedUser() && (existing().userId == request.auth.uid || isBootstrapAdmin());
+
+      allow create: if isValidId(withdrawId)
+        && isVerifiedUser()
+        && isValidWithdrawal(incoming(), withdrawId)
+        && incoming().userId == request.auth.uid
+        && incoming().status == 'Processing'
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+
+      allow update: if isValidId(withdrawId)
+        && isValidWithdrawal(incoming(), withdrawId)
+        && incoming().id == existing().id
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && isAdmin()
+        && existing().status == 'Processing';
+
+      allow delete: if false;
+    }
+
+    match /config/{configId} {
+      allow get: if isValidId(configId) && isVerifiedUser();
+      allow list: if false;
+      allow create, update: if isValidId(configId) && isAdmin() && isValidAppConfig(incoming()) && incoming().updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    match /referrals/{referralCode} {
+      allow get: if isValidId(referralCode) && isVerifiedUser();
+      allow list: if false;
+      allow create: if isValidId(referralCode)
+        && isVerifiedUser()
+        && isValidReferralIndex(incoming(), referralCode)
+        && incoming().ownerId == request.auth.uid
+        && incoming().createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    match /admins/{adminId} {
+      allow get: if isValidId(adminId) && (isOwner(adminId) || isBootstrapAdmin());
+      allow list: if false;
+      allow create: if isValidId(adminId) && isBootstrapAdmin() && isValidAdminRole(incoming()) && incoming().createdAt == request.time;
+      allow update: if isValidId(adminId) && isBootstrapAdmin() && isValidAdminRole(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if isValidId(adminId) && isBootstrapAdmin();
+    }
+  }
+}

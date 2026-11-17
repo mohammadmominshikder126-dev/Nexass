@@ -1,0 +1,6 @@
+{
+  "name": "NexasWorld",
+  "description": "Black and white automotive VIP investment platform with investment plans, recharge, withdraw, team referrals, and account management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
