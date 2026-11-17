@@ -119,8 +119,24 @@ export function isBootstrapAdminUser(user: User | null): boolean {
 }
 
 export async function signInWithGoogle(): Promise<User> {
-  const cred = await signInWithPopup(auth, googleProvider);
-  return cred.user;
+  try {
+    const cred = await signInWithPopup(auth, googleProvider);
+    return cred.user;
+  } catch (err: unknown) {
+    const code = (err as { code?: string })?.code || '';
+    if (code === 'auth/unauthorized-domain') {
+      throw new Error(
+        'এই কাস্টম ডোমেইনে Google লগইন অনুমোদিত নয়। অনুগ্রহ করে মোবাইল নম্বর দিয়ে লগইন/রেজিস্টার করুন।'
+      );
+    }
+    if (code === 'auth/popup-blocked') {
+      throw new Error('ব্রাউজারে পপ-আপ ব্লক করা আছে। পপ-আপ অনুমতি দিয়ে আবার চেষ্টা করুন।');
+    }
+    if (code === 'auth/popup-closed-by-user') {
+      throw new Error('Google লগইন বাতিল করা হয়েছে।');
+    }
+    throw err;
+  }
 }
 
 export async function signOutFirebase(): Promise<void> {
@@ -410,7 +426,7 @@ export async function createDepositInFirestore(
   if (!isVerifiedFirebaseUser(auth.currentUser)) return;
   const amount = Number(payload.amount);
   const cleanTxId = (payload.txId || '').trim().slice(0, 128);
-  if (!Number.isFinite(amount) || amount < 400 || amount > 1000000 || cleanTxId.length < 4) {
+  if (!Number.isFinite(amount) || amount < 300 || amount > 1000000 || cleanTxId.length < 4) {
     return;
   }
   const safeUid = sanitizeDocId(uid, 'usr');

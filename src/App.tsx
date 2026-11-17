@@ -8,6 +8,7 @@ import {
   fetchAppConfig,
   fetchSession,
   getStoredToken,
+  isExpressBackendActive,
   loginAccount,
   loginWithGoogleAccount,
   redeemGiftCode,
@@ -17,6 +18,7 @@ import {
   submitWithdraw,
   updateAccountDetails,
 } from './api';
+import { createDefaultPublicConfig, subscribeLocalSync } from './localFallbackStore';
 import { VIP_PLANS } from './data/plans';
 import {
   claimUserProductInFirestore,
@@ -62,14 +64,7 @@ import type {
   VipPlan,
 } from './types';
 
-const DEFAULT_PUBLIC_CONFIG: PublicAppConfig = {
-  telegramGroupUrl: 'https://t.me/nexasworld_official',
-  supportUrl: 'https://t.me/nexasworld_support',
-  welcomeNotice:
-    'অফিসিয়াল আপডেট, পেমেন্ট প্রুফ এবং ২৪/৭ কাস্টমার সাপোর্টের জন্য আমাদের টেলিগ্রাম গ্রুপে জয়েন করুন।',
-  registrationBonus: 150,
-  paymentNumbers: [],
-};
+const DEFAULT_PUBLIC_CONFIG: PublicAppConfig = createDefaultPublicConfig();
 
 function isAdminPath(): boolean {
   return (
@@ -161,16 +156,28 @@ export default function App() {
     };
   }, []);
 
-  // Real-time SSE sync so Admin changes update users immediately
+  // Real-time sync: Express SSE when Node server is active, BroadcastChannel/storage on static hosting
   useEffect(() => {
-    const events = new EventSource('/api/events');
+    let events: EventSource | null = null;
+    let cancelled = false;
     const handleSync = () => {
       void refreshLiveData();
     };
-    events.addEventListener('sync', handleSync);
+    const unsubLocal = subscribeLocalSync(handleSync);
+
+    void isExpressBackendActive().then((active) => {
+      if (cancelled || !active) return;
+      events = new EventSource('/api/events');
+      events.addEventListener('sync', handleSync);
+    });
+
     return () => {
-      events.removeEventListener('sync', handleSync);
-      events.close();
+      cancelled = true;
+      unsubLocal();
+      if (events) {
+        events.removeEventListener('sync', handleSync);
+        events.close();
+      }
     };
   }, [refreshLiveData]);
 
@@ -423,19 +430,26 @@ export default function App() {
     );
   }
 
-  if (!bundle || subPage === 'auth') {
+  if (!bundle || !bundle.user || subPage === 'auth') {
     return (
       <div className="min-h-screen bg-[#081123] text-slate-50">
         <AuthView
           onLogin={handleLogin}
           onRegister={handleRegister}
           onGoogleLogin={handleGoogleLogin}
-          onCancel={bundle ? () => setSubPage(null) : undefined}
+          onCancel={bundle?.user ? () => setSubPage(null) : undefined}
           initialReferralCode={urlRefCode}
         />
       </div>
     );
   }
+
+  const safeTransactions = Array.isArray(bundle.transactions) ? bundle.transactions : [];
+  const safeProducts = Array.isArray(bundle.products) ? bundle.products : [];
+  const safeTeam = Array.isArray(bundle.team) ? bundle.team : [];
+  const safeRedeemedCodes = Array.isArray(bundle.user.redeemedCodes)
+    ? bundle.user.redeemedCodes
+    : [];
 
   return (
     <div className="min-h-screen bg-[#081123] text-slate-50 pb-24 md:pb-12">
@@ -444,7 +458,7 @@ export default function App() {
         onSelectTab={handleSelectTab}
         onOpenMenu={() => setMenuOpen(true)}
         onOpenNotifications={() => setNotificationsOpen(true)}
-        unreadCount={bundle.transactions.length > 0 ? 1 : 0}
+        unreadCount={safeTransactions.length > 0 ? 1 : 0}
       />
 
       <main className="max-w-5xl mx-auto px-3.5 sm:px-6 pt-4 sm:pt-6">
@@ -460,7 +474,7 @@ export default function App() {
         ) : subPage === 'withdraw' ? (
           <WithdrawView
             user={bundle.user}
-            products={bundle.products}
+            products={safeProducts}
             onBack={() => setSubPage(null)}
             onGoToPlans={() => {
               setSubPage(null);
@@ -482,7 +496,7 @@ export default function App() {
             onSave={handleUpdateAccount}
           />
         ) : subPage === 'records' ? (
-          <PaymentRecordView transactions={bundle.transactions} onBack={() => setSubPage(null)} />
+          <PaymentRecordView transactions={safeTransactions} onBack={() => setSubPage(null)} />
         ) : activeTab === 'home' ? (
           <HomeView
             onSelectPlan={handleSelectPlan}
@@ -492,18 +506,18 @@ export default function App() {
           />
         ) : activeTab === 'products' ? (
           <ProductsView
-            products={bundle.products}
+            products={safeProducts}
             onClaimIncome={handleClaimIncome}
             onSelectPlan={handleSelectPlan}
             claimingId={claimingId}
             defaultTab={productsSubTab}
           />
         ) : activeTab === 'team' ? (
-          <TeamView user={bundle.user} team={bundle.team} />
+          <TeamView user={bundle.user} team={safeTeam} />
         ) : (
           <ProfileView
             user={bundle.user}
-            team={bundle.team}
+            team={safeTeam}
             onOpenSubPage={(page) => setSubPage(page)}
             onOpenProducts={() => {
               setProductsSubTab('active');
@@ -528,7 +542,7 @@ export default function App() {
 
       {notificationsOpen && (
         <NotificationsDrawer
-          transactions={bundle.transactions}
+          transactions={safeTransactions}
           onClose={() => setNotificationsOpen(false)}
         />
       )}
@@ -549,7 +563,7 @@ export default function App() {
       {subPage === 'salary' && (
         <DailySalaryModal
           user={bundle.user}
-          team={bundle.team}
+          team={safeTeam}
           onClose={() => setSubPage(null)}
           onClaim={handleClaimSalary}
         />
@@ -557,7 +571,7 @@ export default function App() {
 
       {subPage === 'gift' && (
         <GiftCodeModal
-          redeemedCodes={bundle.user.redeemedCodes}
+          redeemedCodes={safeRedeemedCodes}
           onClose={() => setSubPage(null)}
           onRedeem={handleRedeemGift}
         />

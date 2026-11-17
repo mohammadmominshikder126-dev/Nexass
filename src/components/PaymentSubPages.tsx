@@ -53,24 +53,24 @@ interface ChannelOption {
 
 const DEFAULT_CHANNELS: Record<GatewayMethodId, Omit<ChannelOption, 'agentNumber' | 'typeLabel'>[]> = {
   bKash: [
-    { id: 'GOPAY-BK', label: 'GOPAY-BK', rangeLabel: 'সীমা: 500 - 50K', min: 500, max: 50000 },
-    { id: 'PopoPay-PSBK', label: 'PopoPay-PSBK', rangeLabel: 'সীমা: 500 - 25K', min: 500, max: 25000 },
-    { id: 'GoPayPS-BKASH', label: 'GoPayPS-BKASH', rangeLabel: 'সীমা: 500 - 50K', min: 500, max: 50000 },
-    { id: 'OPPAY-BK', label: 'OPPAY-BK', rangeLabel: 'সীমা: 500 - 30K', min: 500, max: 30000 },
+    { id: 'GOPAY-BK', label: 'GOPAY-BK', rangeLabel: 'সীমা: 300 - 50K', min: 300, max: 50000 },
+    { id: 'PopoPay-PSBK', label: 'PopoPay-PSBK', rangeLabel: 'সীমা: 300 - 25K', min: 300, max: 25000 },
+    { id: 'GoPayPS-BKASH', label: 'GoPayPS-BKASH', rangeLabel: 'সীমা: 300 - 50K', min: 300, max: 50000 },
+    { id: 'OPPAY-BK', label: 'OPPAY-BK', rangeLabel: 'সীমা: 300 - 30K', min: 300, max: 30000 },
   ],
   Nagad: [
-    { id: 'GOPAY-NG', label: 'GOPAY-NG', rangeLabel: 'সীমা: 500 - 50K', min: 500, max: 50000 },
-    { id: 'PopoPay-PSNG', label: 'PopoPay-PSNG', rangeLabel: 'সীমা: 500 - 25K', min: 500, max: 25000 },
-    { id: 'OPPAY-NG', label: 'OPPAY-NG', rangeLabel: 'সীমা: 500 - 30K', min: 500, max: 30000 },
-    { id: 'SHPAY-NG', label: 'SHPAY-NG', rangeLabel: 'সীমা: 400 - 50K', min: 400, max: 50000 },
+    { id: 'GOPAY-NG', label: 'GOPAY-NG', rangeLabel: 'সীমা: 300 - 50K', min: 300, max: 50000 },
+    { id: 'PopoPay-PSNG', label: 'PopoPay-PSNG', rangeLabel: 'সীমা: 300 - 25K', min: 300, max: 25000 },
+    { id: 'OPPAY-NG', label: 'OPPAY-NG', rangeLabel: 'সীমা: 300 - 30K', min: 300, max: 30000 },
+    { id: 'SHPAY-NG', label: 'SHPAY-NG', rangeLabel: 'সীমা: 300 - 50K', min: 300, max: 50000 },
   ],
   USDT: [
-    { id: 'USDT-TRC20', label: 'USDT-TRC20', rangeLabel: 'সীমা: 500 - 100K (+2%)', min: 500, max: 100000 },
-    { id: 'USDT-BEP20', label: 'USDT-BEP20', rangeLabel: 'সীমা: 500 - 100K (+2%)', min: 500, max: 100000 },
+    { id: 'USDT-TRC20', label: 'USDT-TRC20', rangeLabel: 'সীমা: 300 - 100K (+2%)', min: 300, max: 100000 },
+    { id: 'USDT-BEP20', label: 'USDT-BEP20', rangeLabel: 'সীমা: 300 - 100K (+2%)', min: 300, max: 100000 },
   ],
 };
 
-const DEPOSIT_AMOUNTS = [500, 1000, 1500, 3500, 5500, 10000, 25000, 50000];
+const DEPOSIT_AMOUNTS = [300, 500, 1000, 1500, 3500, 5500, 10000, 25000];
 
 export function RechargeView({
   user,
@@ -83,7 +83,7 @@ export function RechargeView({
   const [step, setStep] = useState<'select' | 'cashier' | 'receipt'>('select');
   const [method, setMethod] = useState<GatewayMethodId>('bKash');
   const [channelId, setChannelId] = useState<string>('GOPAY-BK');
-  const [amount, setAmount] = useState<number>(500);
+  const [amount, setAmount] = useState<number>(300);
   const [txId, setTxId] = useState<string>('');
   const [refreshing, setRefreshing] = useState(false);
   const [copiedWallet, setCopiedWallet] = useState(false);
@@ -95,7 +95,7 @@ export function RechargeView({
   const [receiptTxId, setReceiptTxId] = useState<string>('');
 
   const buildChannelsForMethod = (m: GatewayMethodId): ChannelOption[] => {
-    const adminNumbers = config.paymentNumbers.filter((p) => p.method === m);
+    const adminNumbers = (config?.paymentNumbers || []).filter((p) => p.method === m);
     const fallbackNumber =
       adminNumbers[0]?.number ||
       (m === 'bKash' || m === 'Nagad'
@@ -118,8 +118,8 @@ export function RechargeView({
         baseChannels.unshift({
           id: pn.id,
           label: pn.channelLabel,
-          rangeLabel: 'সীমা: 500 - 50K',
-          min: 500,
+          rangeLabel: 'সীমা: 300 - 50K',
+          min: 300,
           max: 50000,
           agentNumber: pn.number,
           typeLabel: pn.typeLabel,

@@ -26,7 +26,9 @@ import {
   clearStoredAdminKey,
   fetchAdminOverview,
   getStoredAdminKey,
+  isExpressBackendActive,
 } from '../api';
+import { subscribeLocalSync } from '../localFallbackStore';
 import {
   adminAdjustBalanceInFirestore,
   adminSaveAppConfigInFirestore,
@@ -102,11 +104,23 @@ export function AdminPanel({ onExitToApp }: { onExitToApp: () => void }) {
   useEffect(() => {
     if (!authorized) return;
     loadOverview();
-    const es = new EventSource('/api/events');
-    es.addEventListener('sync', () => {
-      loadOverview();
+    let es: EventSource | null = null;
+    let cancelled = false;
+    const unsubLocal = subscribeLocalSync(() => {
+      void loadOverview();
     });
-    return () => es.close();
+    void isExpressBackendActive().then((active) => {
+      if (cancelled || !active) return;
+      es = new EventSource('/api/events');
+      es.addEventListener('sync', () => {
+        void loadOverview();
+      });
+    });
+    return () => {
+      cancelled = true;
+      unsubLocal();
+      if (es) es.close();
+    };
   }, [authorized, loadOverview]);
 
   const handleConnectGoogleAdmin = async () => {

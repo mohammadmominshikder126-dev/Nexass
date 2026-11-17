@@ -613,8 +613,8 @@ async function startServer() {
       bonusPct?: number;
     };
     const numericAmount = Number(amount);
-    if (!Number.isFinite(numericAmount) || numericAmount < 400) {
-      res.status(400).json({ error: 'সর্বনিম্ন রিচার্জ পরিমাণ 400 BDT।' });
+    if (!Number.isFinite(numericAmount) || numericAmount < 300) {
+      res.status(400).json({ error: 'সর্বনিম্ন রিচার্জ পরিমাণ 300 BDT।' });
       return;
     }
     const cleanTxId = txId?.trim();

@@ -142,7 +142,7 @@ service cloud.firestore {
       && data.userId is string && isValidId(data.userId)
       && data.userPhone is string && data.userPhone.size() >= 5 && data.userPhone.size() <= 32
       && data.userName is string && data.userName.size() >= 1 && data.userName.size() <= 100
-      && data.amount is number && data.amount >= 400 && data.amount <= 1000000
+      && data.amount is number && data.amount >= 300 && data.amount <= 1000000
       && data.bonusAmount is number && data.bonusAmount >= 0 && data.bonusAmount <= 50000
       && data.method is string && data.method.size() >= 1 && data.method.size() <= 40
       && data.channel is string && data.channel.size() >= 1 && data.channel.size() <= 64
