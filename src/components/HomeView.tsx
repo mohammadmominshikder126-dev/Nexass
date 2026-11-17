@@ -5,6 +5,7 @@ import type { VipPlan } from '../types';
 import { VipPlanCard } from './VipPlanCard';
 
 interface HomeViewProps {
+  plans?: VipPlan[];
   onSelectPlan: (plan: VipPlan) => void;
   onOpenRecharge: () => void;
   onOpenWithdraw: () => void;
@@ -27,11 +28,13 @@ const SLIDES = [
 ];
 
 export function HomeView({
+  plans,
   onSelectPlan,
   onOpenRecharge,
   onOpenWithdraw,
   onOpenSupport,
 }: HomeViewProps) {
+  const activePlans = plans && plans.length > 0 ? plans : VIP_PLANS;
   const [slideIndex, setSlideIndex] = useState(0);
   const [bannerError, setBannerError] = useState(false);
 
@@ -126,7 +129,7 @@ export function HomeView({
 
       {/* VIP Investment Plans Grid */}
       <section aria-label="VIP বিনিয়োগ প্ল্যান" className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-        {VIP_PLANS.map((plan) => (
+        {activePlans.map((plan) => (
           <VipPlanCard key={plan.id} plan={plan} onSelectPlan={onSelectPlan} />
         ))}
       </section>

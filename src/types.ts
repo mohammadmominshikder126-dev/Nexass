@@ -117,6 +117,7 @@ export interface PublicAppConfig {
   welcomeNotice: string;
   registrationBonus: number;
   paymentNumbers: PaymentNumberEntry[];
+  vipPlans: VipPlan[];
 }
 
 export interface AdminDepositRequest {

@@ -8,6 +8,7 @@ import {
   localAdminOverview,
   localAdminRejectDeposit,
   localAdminRejectWithdraw,
+  localAdminSavePlans,
   localAdminSaveSettings,
   localBuyVipPlan,
   localClaimDailySalary,
@@ -23,12 +24,14 @@ import {
   localSubmitWithdraw,
   localUpdateAccountDetails,
 } from './localFallbackStore';
+import { VIP_PLANS } from './data/plans';
 import type {
   AdminOverviewData,
   PaymentNumberEntry,
   PayoutMethod,
   PublicAppConfig,
   UserAccountBundle,
+  VipPlan,
 } from './types';
 
 const TOKEN_KEY = 'nexas_auth_token';
@@ -192,7 +195,13 @@ export async function fetchSession(): Promise<UserAccountBundle> {
 export async function fetchAppConfig(): Promise<PublicAppConfig> {
   try {
     const data = await apiRequest<PublicAppConfig>('/api/config');
-    if (data && Array.isArray(data.paymentNumbers)) return data;
+    if (data && Array.isArray(data.paymentNumbers)) {
+      return {
+        ...data,
+        vipPlans:
+          Array.isArray(data.vipPlans) && data.vipPlans.length > 0 ? data.vipPlans : VIP_PLANS,
+      };
+    }
     throw new BackendUnavailableError('Malformed config');
   } catch (err) {
     if (err instanceof BackendUnavailableError) {
@@ -435,7 +444,18 @@ export async function adminLogin(passcode: string): Promise<void> {
 export async function fetchAdminOverview(): Promise<AdminOverviewData> {
   try {
     const data = await adminRequest<AdminOverviewData>('/api/admin/overview');
-    if (data && Array.isArray(data.users) && data.config) return data;
+    if (data && Array.isArray(data.users) && data.config) {
+      return {
+        ...data,
+        config: {
+          ...data.config,
+          vipPlans:
+            Array.isArray(data.config.vipPlans) && data.config.vipPlans.length > 0
+              ? data.config.vipPlans
+              : VIP_PLANS,
+        },
+      };
+    }
     throw new BackendUnavailableError('Malformed admin overview');
   } catch (err) {
     if (err instanceof BackendUnavailableError) {
@@ -555,11 +575,39 @@ export async function adminSaveSettings(
       method: 'PUT',
       body: JSON.stringify(payload),
     });
-    if (data && Array.isArray(data.paymentNumbers)) return data;
+    if (data && Array.isArray(data.paymentNumbers)) {
+      return {
+        ...data,
+        vipPlans:
+          Array.isArray(data.vipPlans) && data.vipPlans.length > 0 ? data.vipPlans : VIP_PLANS,
+      };
+    }
     throw new BackendUnavailableError('Malformed settings config');
   } catch (err) {
     if (err instanceof BackendUnavailableError) {
       return localAdminSaveSettings(getStoredAdminKey(), payload);
+    }
+    throw err;
+  }
+}
+
+export async function adminSavePlans(vipPlans: VipPlan[]): Promise<PublicAppConfig> {
+  try {
+    const data = await adminRequest<PublicAppConfig>('/api/admin/plans', {
+      method: 'PUT',
+      body: JSON.stringify({ vipPlans }),
+    });
+    if (data && Array.isArray(data.paymentNumbers)) {
+      return {
+        ...data,
+        vipPlans:
+          Array.isArray(data.vipPlans) && data.vipPlans.length > 0 ? data.vipPlans : VIP_PLANS,
+      };
+    }
+    throw new BackendUnavailableError('Malformed plans config');
+  } catch (err) {
+    if (err instanceof BackendUnavailableError) {
+      return localAdminSavePlans(getStoredAdminKey(), vipPlans);
     }
     throw err;
   }

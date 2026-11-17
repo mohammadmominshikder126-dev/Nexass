@@ -22,12 +22,14 @@ import {
   adminLogin,
   adminRejectDeposit,
   adminRejectWithdraw,
+  adminSavePlans,
   adminSaveSettings,
   clearStoredAdminKey,
   fetchAdminOverview,
   getStoredAdminKey,
   isExpressBackendActive,
 } from '../api';
+import { VIP_PLANS } from '../data/plans';
 import { subscribeLocalSync } from '../localFallbackStore';
 import {
   adminAdjustBalanceInFirestore,
@@ -38,7 +40,7 @@ import {
   signInWithGoogle,
   subscribeAuthState,
 } from '../firebase';
-import type { AdminOverviewData } from '../types';
+import type { AdminOverviewData, VipPlan } from '../types';
 
 export function AdminPanel({ onExitToApp }: { onExitToApp: () => void }) {
   const [authorized, setAuthorized] = useState<boolean>(Boolean(getStoredAdminKey()));
@@ -47,9 +49,9 @@ export function AdminPanel({ onExitToApp }: { onExitToApp: () => void }) {
 
   const [data, setData] = useState<AdminOverviewData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState<'deposits' | 'users' | 'withdrawals' | 'payments' | 'settings'>(
-    'deposits'
-  );
+  const [tab, setTab] = useState<
+    'deposits' | 'users' | 'withdrawals' | 'plans' | 'payments' | 'settings'
+  >('deposits');
   const [searchQuery, setSearchQuery] = useState('');
   const [toast, setToast] = useState<string | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
@@ -73,6 +75,10 @@ export function AdminPanel({ onExitToApp }: { onExitToApp: () => void }) {
   const [supUrl, setSupUrl] = useState('');
   const [noticeText, setNoticeText] = useState('');
   const [regBonus, setRegBonus] = useState(150);
+  const [editablePlans, setEditablePlans] = useState<VipPlan[]>(() =>
+    VIP_PLANS.map((p) => ({ ...p }))
+  );
+  const [savingPlans, setSavingPlans] = useState(false);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -88,6 +94,9 @@ export function AdminPanel({ onExitToApp }: { onExitToApp: () => void }) {
       setSupUrl(overview.config.supportUrl);
       setNoticeText(overview.config.welcomeNotice);
       setRegBonus(overview.config.registrationBonus);
+      if (Array.isArray(overview.config.vipPlans) && overview.config.vipPlans.length > 0) {
+        setEditablePlans(overview.config.vipPlans.map((p) => ({ ...p })));
+      }
     } catch {
       clearStoredAdminKey();
       setAuthorized(false);
@@ -209,6 +218,53 @@ export function AdminPanel({ onExitToApp }: { onExitToApp: () => void }) {
       showToast('সেটিংস সেভ ও লাইভ আপডেট হয়েছে।');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'ব্যর্থ হয়েছে');
+    }
+  };
+
+  const updatePlanField = (
+    planId: string,
+    field: 'price' | 'dailyIncome' | 'validityDays' | 'totalIncome',
+    rawValue: number
+  ) => {
+    setEditablePlans((prev) =>
+      prev.map((p) => {
+        if (p.id !== planId) return p;
+        const val = Number.isFinite(rawValue) ? rawValue : 0;
+        if (field === 'price') {
+          return { ...p, price: Math.max(1, val) };
+        }
+        if (field === 'dailyIncome') {
+          const nextDaily = Math.max(1, val);
+          return {
+            ...p,
+            dailyIncome: nextDaily,
+            totalIncome: Number((nextDaily * p.validityDays).toFixed(2)),
+          };
+        }
+        if (field === 'validityDays') {
+          const nextDays = Math.min(365, Math.max(1, Math.round(val)));
+          return {
+            ...p,
+            validityDays: nextDays,
+            totalIncome: Number((p.dailyIncome * nextDays).toFixed(2)),
+          };
+        }
+        return { ...p, totalIncome: Math.max(1, val) };
+      })
+    );
+  };
+
+  const handleSavePlans = async (plansToSave: VipPlan[] = editablePlans) => {
+    setSavingPlans(true);
+    try {
+      const updatedConfig = await adminSavePlans(plansToSave);
+      await adminSaveAppConfigInFirestore(updatedConfig);
+      await loadOverview();
+      showToast('VIP প্ল্যানের দাম, আয় ও মেয়াদ লাইভ আপডেট হয়েছে!');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'প্ল্যান সেভ করা যায়নি');
+    } finally {
+      setSavingPlans(false);
     }
   };
 
@@ -384,6 +440,7 @@ export function AdminPanel({ onExitToApp }: { onExitToApp: () => void }) {
               { key: 'deposits', label: `ডিপোজিট কনফার্ম (${data?.pendingDepositCount ?? 0})` },
               { key: 'users', label: `অ্যাকাউন্ট ও ব্যালেন্স (${data?.totalUsers ?? 0})` },
               { key: 'withdrawals', label: `উত্তোলন (${data?.pendingWithdrawCount ?? 0})` },
+              { key: 'plans', label: `প্ল্যান ও দাম (${editablePlans.length})` },
               { key: 'payments', label: 'পেমেন্ট নম্বর' },
               { key: 'settings', label: 'টেলিগ্রাম ও বোনাস' },
             ] as const
@@ -655,7 +712,209 @@ export function AdminPanel({ onExitToApp }: { onExitToApp: () => void }) {
           </section>
         )}
 
-        {/* TAB 4: PAYMENT NUMBERS MANAGEMENT */}
+        {/* TAB 4: VIP PLANS PRICE, INCOME & VALIDITY CONTROLS */}
+        {tab === 'plans' && (
+          <section className="space-y-4">
+            <div className="rounded-2xl bg-[#101A30] border border-slate-800 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="font-display text-base font-bold text-white">
+                  VIP প্ল্যানের দাম, আয় ও মেয়াদ কন্ট্রোল
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  যেকোনো প্ল্যানের দাম, দৈনিক আয় ও মেয়াদ (দিন) বাড়ান বা কমান। সেভ করলে সাথে সাথে ইউজারের হোম পেজে আপডেট হবে।
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const defaults = VIP_PLANS.map((p) => ({ ...p }));
+                    setEditablePlans(defaults);
+                    showToast('ডিফল্ট প্ল্যান লোড হয়েছে — সংরক্ষণ করতে সেভ বাটনে ক্লিক করুন।');
+                  }}
+                  className="min-h-[40px] px-3.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 text-xs font-semibold hover:bg-slate-800"
+                >
+                  ডিফল্ট রিসেট
+                </button>
+                <button
+                  type="button"
+                  disabled={savingPlans}
+                  onClick={() => void handleSavePlans()}
+                  className="min-h-[40px] px-4 rounded-xl bg-sky-500 hover:bg-sky-400 text-white text-xs sm:text-sm font-semibold disabled:opacity-60"
+                >
+                  {savingPlans ? 'সেভ হচ্ছে...' : 'সকল প্ল্যান সেভ করুন'}
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {editablePlans.map((plan) => (
+                <div
+                  key={plan.id}
+                  className="rounded-2xl bg-[#101A30] border border-slate-800 p-4 sm:p-5 space-y-4"
+                >
+                  <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-800">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <img
+                        src={plan.image}
+                        alt={plan.modelName}
+                        className="w-16 h-11 rounded-lg object-cover border border-slate-700 shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <h3 className="font-display text-sm sm:text-base font-bold text-white">
+                          {plan.tier}
+                        </h3>
+                        <p className="text-xs text-slate-400 truncate">{plan.modelName}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={savingPlans}
+                      onClick={() => void handleSavePlans()}
+                      className="min-h-[34px] px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shrink-0 disabled:opacity-60"
+                    >
+                      সেভ করুন
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Price Control */}
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-400 mb-1">
+                        প্ল্যানের দাম (BDT)
+                      </label>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          aria-label={`${plan.tier} দাম কমান`}
+                          onClick={() => updatePlanField(plan.id, 'price', plan.price - 100)}
+                          className="min-h-[40px] min-w-[38px] rounded-xl bg-slate-900 border border-slate-700 text-slate-200 hover:bg-slate-800 flex items-center justify-center"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <input
+                          type="number"
+                          min={1}
+                          step="any"
+                          value={plan.price}
+                          onChange={(e) =>
+                            updatePlanField(plan.id, 'price', Number(e.target.value))
+                          }
+                          className="w-full min-h-[40px] px-3 rounded-xl bg-slate-950 border border-slate-700 font-mono text-sm font-bold text-white text-center"
+                        />
+                        <button
+                          type="button"
+                          aria-label={`${plan.tier} দাম বাড়ান`}
+                          onClick={() => updatePlanField(plan.id, 'price', plan.price + 100)}
+                          className="min-h-[40px] min-w-[38px] rounded-xl bg-slate-900 border border-slate-700 text-slate-200 hover:bg-slate-800 flex items-center justify-center"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Daily Income Control */}
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-400 mb-1">
+                        দৈনিক আয় (BDT)
+                      </label>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          aria-label={`${plan.tier} দৈনিক আয় কমান`}
+                          onClick={() =>
+                            updatePlanField(plan.id, 'dailyIncome', plan.dailyIncome - 10)
+                          }
+                          className="min-h-[40px] min-w-[38px] rounded-xl bg-slate-900 border border-slate-700 text-slate-200 hover:bg-slate-800 flex items-center justify-center"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <input
+                          type="number"
+                          min={1}
+                          step="any"
+                          value={plan.dailyIncome}
+                          onChange={(e) =>
+                            updatePlanField(plan.id, 'dailyIncome', Number(e.target.value))
+                          }
+                          className="w-full min-h-[40px] px-3 rounded-xl bg-slate-950 border border-slate-700 font-mono text-sm font-bold text-emerald-400 text-center"
+                        />
+                        <button
+                          type="button"
+                          aria-label={`${plan.tier} দৈনিক আয় বাড়ান`}
+                          onClick={() =>
+                            updatePlanField(plan.id, 'dailyIncome', plan.dailyIncome + 10)
+                          }
+                          className="min-h-[40px] min-w-[38px] rounded-xl bg-slate-900 border border-slate-700 text-slate-200 hover:bg-slate-800 flex items-center justify-center"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Validity Days Control */}
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-400 mb-1">
+                        মেয়াদ (দিন)
+                      </label>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          aria-label={`${plan.tier} মেয়াদ কমান`}
+                          onClick={() =>
+                            updatePlanField(plan.id, 'validityDays', plan.validityDays - 1)
+                          }
+                          className="min-h-[40px] min-w-[38px] rounded-xl bg-slate-900 border border-slate-700 text-slate-200 hover:bg-slate-800 flex items-center justify-center"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <input
+                          type="number"
+                          min={1}
+                          max={365}
+                          value={plan.validityDays}
+                          onChange={(e) =>
+                            updatePlanField(plan.id, 'validityDays', Number(e.target.value))
+                          }
+                          className="w-full min-h-[40px] px-3 rounded-xl bg-slate-950 border border-slate-700 font-mono text-sm font-bold text-sky-400 text-center"
+                        />
+                        <button
+                          type="button"
+                          aria-label={`${plan.tier} মেয়াদ বাড়ান`}
+                          onClick={() =>
+                            updatePlanField(plan.id, 'validityDays', plan.validityDays + 1)
+                          }
+                          className="min-h-[40px] min-w-[38px] rounded-xl bg-slate-900 border border-slate-700 text-slate-200 hover:bg-slate-800 flex items-center justify-center"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Total Income Control */}
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-400 mb-1">
+                        মোট আয় (BDT)
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        step="any"
+                        value={plan.totalIncome}
+                        onChange={(e) =>
+                          updatePlanField(plan.id, 'totalIncome', Number(e.target.value))
+                        }
+                        className="w-full min-h-[40px] px-3 rounded-xl bg-slate-950 border border-slate-700 font-mono text-sm font-bold text-amber-400 text-center"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* TAB 5: PAYMENT NUMBERS MANAGEMENT */}
         {tab === 'payments' && (
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <form

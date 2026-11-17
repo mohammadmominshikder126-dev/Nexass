@@ -216,6 +216,10 @@ export default function App() {
         ...prev,
         ...cfgPatch,
         paymentNumbers: cfgPatch.paymentNumbers ?? prev.paymentNumbers,
+        vipPlans:
+          Array.isArray(cfgPatch.vipPlans) && cfgPatch.vipPlans.length > 0
+            ? cfgPatch.vipPlans
+            : prev.vipPlans,
       }));
     });
     const unsubProfile = subscribeToUserProfile(firebaseUser.uid, (profilePatch) => {
@@ -316,7 +320,11 @@ export default function App() {
   const handleConfirmPlan = async (planId: string) => {
     const next = await buyVipPlan(planId);
     if (isVerifiedFirebaseUser(firebaseUser)) {
-      const matchedPlan = VIP_PLANS.find((p) => p.id === planId);
+      const catalog =
+        Array.isArray(appConfig.vipPlans) && appConfig.vipPlans.length > 0
+          ? appConfig.vipPlans
+          : VIP_PLANS;
+      const matchedPlan = catalog.find((p) => p.id === planId);
       if (matchedPlan) {
         await createUserProductInFirestore(
           firebaseUser.uid,
@@ -533,6 +541,7 @@ export default function App() {
           <PaymentRecordView transactions={safeTransactions} onBack={() => setSubPage(null)} />
         ) : activeTab === 'home' ? (
           <HomeView
+            plans={appConfig.vipPlans}
             onSelectPlan={handleSelectPlan}
             onOpenRecharge={() => setSubPage('recharge')}
             onOpenWithdraw={() => setSubPage('withdraw')}
@@ -540,6 +549,7 @@ export default function App() {
           />
         ) : activeTab === 'products' ? (
           <ProductsView
+            plans={appConfig.vipPlans}
             products={safeProducts}
             onClaimIncome={handleClaimIncome}
             onSelectPlan={handleSelectPlan}

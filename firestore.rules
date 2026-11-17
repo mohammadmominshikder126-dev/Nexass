@@ -182,7 +182,7 @@ service cloud.firestore {
       ])
       && data.keys().hasOnly([
         'telegramGroupUrl', 'supportUrl', 'welcomeNotice',
-        'registrationBonus', 'paymentNumbers', 'updatedAt'
+        'registrationBonus', 'paymentNumbers', 'vipPlans', 'updatedAt'
       ])
       && data.telegramGroupUrl is string && data.telegramGroupUrl.size() <= 300
       && data.supportUrl is string && data.supportUrl.size() <= 300
@@ -190,6 +190,10 @@ service cloud.firestore {
       && data.registrationBonus is number && data.registrationBonus >= 0 && data.registrationBonus <= 10000
       && data.paymentNumbers is list && data.paymentNumbers.size() <= 20
       && (data.paymentNumbers.size() == 0 || data.paymentNumbers[0] is map)
+      && (!('vipPlans' in data) || (
+        data.vipPlans is list && data.vipPlans.size() <= 20
+        && (data.vipPlans.size() == 0 || data.vipPlans[0] is map)
+      ))
       && data.updatedAt is timestamp;
     }
 

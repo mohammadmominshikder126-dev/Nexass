@@ -300,6 +300,10 @@ export function subscribeToAppConfig(
           paymentNumbers: Array.isArray(data.paymentNumbers)
             ? data.paymentNumbers
             : undefined,
+          vipPlans:
+            Array.isArray(data.vipPlans) && data.vipPlans.length > 0
+              ? (data.vipPlans as VipPlan[])
+              : undefined,
         });
       }
     },
@@ -590,6 +594,19 @@ export async function claimUserProductInFirestore(
 export async function adminSaveAppConfigInFirestore(config: PublicAppConfig): Promise<void> {
   if (!isBootstrapAdminUser(auth.currentUser)) return;
   const path = 'config/app';
+  const safePlans = Array.isArray(config.vipPlans)
+    ? config.vipPlans.slice(0, 20).map((p) => ({
+        id: String(p.id).slice(0, 64),
+        tier: String(p.tier).slice(0, 32),
+        modelName: String(p.modelName).slice(0, 100),
+        price: Math.max(1, Number(p.price || 0)),
+        dailyIncome: Math.max(1, Number(p.dailyIncome || 0)),
+        totalIncome: Math.max(1, Number(p.totalIncome || 0)),
+        validityDays: Math.min(365, Math.max(1, Math.round(Number(p.validityDays || 30)))),
+        image: String(p.image || '').slice(0, 300),
+        category: p.category || 'Starter',
+      }))
+    : [];
   try {
     await setDoc(doc(db, 'config', 'app'), {
       telegramGroupUrl: (config.telegramGroupUrl || '').slice(0, 300),
@@ -597,6 +614,7 @@ export async function adminSaveAppConfigInFirestore(config: PublicAppConfig): Pr
       welcomeNotice: (config.welcomeNotice || '').slice(0, 500),
       registrationBonus: Math.min(Math.max(Number(config.registrationBonus || 0), 0), 10000),
       paymentNumbers: (config.paymentNumbers || []).slice(0, 20),
+      vipPlans: safePlans,
       updatedAt: serverTimestamp(),
     });
   } catch (error) {

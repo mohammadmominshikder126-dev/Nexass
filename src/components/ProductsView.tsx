@@ -5,6 +5,7 @@ import type { UserProduct, VipPlan } from '../types';
 import { VipPlanCard } from './VipPlanCard';
 
 interface ProductsViewProps {
+  plans?: VipPlan[];
   products: UserProduct[];
   onClaimIncome: (productId: string) => Promise<void>;
   onSelectPlan: (plan: VipPlan) => void;
@@ -21,12 +22,14 @@ function formatCountdown(msRemaining: number): string {
 }
 
 export function ProductsView({
+  plans,
   products,
   onClaimIncome,
   onSelectPlan,
   claimingId,
   defaultTab = 'catalog',
 }: ProductsViewProps) {
+  const activePlans = plans && plans.length > 0 ? plans : VIP_PLANS;
   const [subTab, setSubTab] = useState<'catalog' | 'active'>(defaultTab);
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
 
@@ -79,7 +82,7 @@ export function ProductsView({
 
       {subTab === 'catalog' ? (
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-          {VIP_PLANS.map((plan) => (
+          {activePlans.map((plan) => (
             <VipPlanCard key={plan.id} plan={plan} onSelectPlan={onSelectPlan} />
           ))}
         </div>

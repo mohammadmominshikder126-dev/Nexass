@@ -11,6 +11,7 @@ import type {
   UserAccountBundle,
   UserProduct,
   UserProfile,
+  VipPlan,
 } from './types';
 
 const DB_STORAGE_KEY = 'nexasworld_client_db_v1';
@@ -98,6 +99,7 @@ export function createDefaultPublicConfig(): PublicAppConfig {
         typeLabel: 'BEP20 ওয়ালেট',
       },
     ],
+    vipPlans: VIP_PLANS.map((p) => ({ ...p })),
   };
 }
 
@@ -239,6 +241,10 @@ function readDb(): LocalDatabaseSchema {
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<LocalDatabaseSchema>;
       const seed = createSeedLocalDatabase();
+      const cfg = parsed.config || seed.config;
+      if (!Array.isArray(cfg.vipPlans) || cfg.vipPlans.length === 0) {
+        cfg.vipPlans = VIP_PLANS.map((p) => ({ ...p }));
+      }
       return {
         users: parsed.users || seed.users,
         sessions: parsed.sessions || seed.sessions,
@@ -247,7 +253,7 @@ function readDb(): LocalDatabaseSchema {
         team: parsed.team || seed.team,
         deposits: Array.isArray(parsed.deposits) ? parsed.deposits : [],
         withdrawals: Array.isArray(parsed.withdrawals) ? parsed.withdrawals : [],
-        config: parsed.config || seed.config,
+        config: cfg,
       };
     }
   } catch {
@@ -668,7 +674,8 @@ export function localSaveBankCard(
 export function localBuyVipPlan(token: string | null, planId: string): UserAccountBundle {
   const db = readDb();
   const auth = requireUser(db, token);
-  const plan = VIP_PLANS.find((p) => p.id === planId);
+  const catalog = db.config.vipPlans && db.config.vipPlans.length > 0 ? db.config.vipPlans : VIP_PLANS;
+  const plan = catalog.find((p) => p.id === planId);
   if (!plan) {
     throw new Error('VIP প্ল্যানটি পাওয়া যায়নি।');
   }
@@ -751,7 +758,7 @@ export function localClaimProductIncome(
     throw new Error('পণ্যটি পাওয়া যায়নি।');
   }
   if (product.status === 'Completed' || product.daysClaimed >= product.validityDays) {
-    throw new Error('এই প্ল্যানের 30 দিনের মেয়াদ সম্পন্ন হয়েছে।');
+    throw new Error(`এই প্ল্যানের ${product.validityDays} দিনের মেয়াদ সম্পন্ন হয়েছে।`);
   }
   const nowMs = Date.now();
   if (product.lastClaimedAt) {
@@ -1058,6 +1065,43 @@ export function localAdminSaveSettings(
   if (typeof payload.registrationBonus === 'number' && payload.registrationBonus >= 0) {
     db.config.registrationBonus = payload.registrationBonus;
   }
+  writeDb(db);
+  return db.config;
+}
+
+export function localAdminSavePlans(adminKey: string | null, plans: VipPlan[]): PublicAppConfig {
+  checkLocalAdmin(adminKey);
+  if (!Array.isArray(plans) || plans.length === 0) {
+    throw new Error('সঠিক প্ল্যানের তথ্য দিন।');
+  }
+  const db = readDb();
+  const sanitized: VipPlan[] = plans.map((p) => {
+    const price = Number(p.price);
+    const dailyIncome = Number(p.dailyIncome);
+    const validityDays = Math.round(Number(p.validityDays));
+    const totalIncome = Number(p.totalIncome);
+    if (!Number.isFinite(price) || price < 1) {
+      throw new Error(`${p.tier} এর দাম কমপক্ষে 1 BDT হতে হবে।`);
+    }
+    if (!Number.isFinite(dailyIncome) || dailyIncome < 1) {
+      throw new Error(`${p.tier} এর দৈনিক আয় কমপক্ষে 1 BDT হতে হবে।`);
+    }
+    if (!Number.isFinite(validityDays) || validityDays < 1 || validityDays > 365) {
+      throw new Error(`${p.tier} এর মেয়াদ 1 থেকে 365 দিনের মধ্যে হতে হবে।`);
+    }
+    const safeTotal =
+      Number.isFinite(totalIncome) && totalIncome >= 1
+        ? Number(totalIncome.toFixed(2))
+        : Number((dailyIncome * validityDays).toFixed(2));
+    return {
+      ...p,
+      price: Number(price.toFixed(2)),
+      dailyIncome: Number(dailyIncome.toFixed(2)),
+      validityDays,
+      totalIncome: safeTotal,
+    };
+  });
+  db.config.vipPlans = sanitized;
   writeDb(db);
   return db.config;
 }

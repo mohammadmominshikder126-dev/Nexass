@@ -17,6 +17,7 @@ import type {
   UserAccountBundle,
   UserProduct,
   UserProfile,
+  VipPlan,
 } from './src/types.ts';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -100,6 +101,7 @@ function createDefaultConfig(): PublicAppConfig {
         typeLabel: 'BEP20 ওয়ালেট',
       },
     ],
+    vipPlans: VIP_PLANS.map((p) => ({ ...p })),
   };
 }
 
@@ -276,6 +278,9 @@ function loadDatabase(): DatabaseSchema {
           }
           return pn;
         });
+      }
+      if (!Array.isArray(cfg.vipPlans) || cfg.vipPlans.length === 0) {
+        cfg.vipPlans = VIP_PLANS.map((p) => ({ ...p }));
       }
       return {
         users,
@@ -769,7 +774,11 @@ async function startServer() {
       return;
     }
     const { planId } = req.body as { planId?: string };
-    const plan = VIP_PLANS.find((p) => p.id === planId);
+    const catalog =
+      Array.isArray(db.config.vipPlans) && db.config.vipPlans.length > 0
+        ? db.config.vipPlans
+        : VIP_PLANS;
+    const plan = catalog.find((p) => p.id === planId);
     if (!plan) {
       res.status(404).json({ error: 'VIP plan not found.' });
       return;
@@ -858,7 +867,7 @@ async function startServer() {
       return;
     }
     if (product.status === 'Completed' || product.daysClaimed >= product.validityDays) {
-      res.status(400).json({ error: 'এই প্ল্যানের 30 দিনের মেয়াদ সম্পন্ন হয়েছে।' });
+      res.status(400).json({ error: `এই প্ল্যানের ${product.validityDays} দিনের মেয়াদ সম্পন্ন হয়েছে।` });
       return;
     }
 
@@ -1242,6 +1251,53 @@ async function startServer() {
     }
     saveDatabase(db);
     broadcastSync('settings_updated');
+    res.json(db.config);
+  });
+
+  app.put('/api/admin/plans', (req, res) => {
+    if (!isAdminAuthorized(req)) {
+      res.status(401).json({ error: 'Admin authorization required' });
+      return;
+    }
+    const { vipPlans } = req.body as { vipPlans?: VipPlan[] };
+    if (!Array.isArray(vipPlans) || vipPlans.length === 0) {
+      res.status(400).json({ error: 'সঠিক প্ল্যানের তথ্য দিন।' });
+      return;
+    }
+
+    const sanitized: VipPlan[] = [];
+    for (const p of vipPlans) {
+      const price = Number(p.price);
+      const dailyIncome = Number(p.dailyIncome);
+      const validityDays = Math.round(Number(p.validityDays));
+      const totalIncome = Number(p.totalIncome);
+      if (!Number.isFinite(price) || price < 1) {
+        res.status(400).json({ error: `${p.tier} এর দাম কমপক্ষে 1 BDT হতে হবে।` });
+        return;
+      }
+      if (!Number.isFinite(dailyIncome) || dailyIncome < 1) {
+        res.status(400).json({ error: `${p.tier} এর দৈনিক আয় কমপক্ষে 1 BDT হতে হবে।` });
+        return;
+      }
+      if (!Number.isFinite(validityDays) || validityDays < 1 || validityDays > 365) {
+        res.status(400).json({ error: `${p.tier} এর মেয়াদ 1 থেকে 365 দিনের মধ্যে হতে হবে।` });
+        return;
+      }
+      sanitized.push({
+        ...p,
+        price: Number(price.toFixed(2)),
+        dailyIncome: Number(dailyIncome.toFixed(2)),
+        validityDays,
+        totalIncome:
+          Number.isFinite(totalIncome) && totalIncome >= 1
+            ? Number(totalIncome.toFixed(2))
+            : Number((dailyIncome * validityDays).toFixed(2)),
+      });
+    }
+
+    db.config.vipPlans = sanitized;
+    saveDatabase(db);
+    broadcastSync('plans_updated');
     res.json(db.config);
   });
 
