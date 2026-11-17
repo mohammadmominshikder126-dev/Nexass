@@ -90,8 +90,15 @@ export default function App() {
   const [toast, setToast] = useState<string | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [authReady, setAuthReady] = useState(false);
+  const [authInitialMode, setAuthInitialMode] = useState<'login' | 'register'>('register');
 
-  const urlRefCode = new URLSearchParams(window.location.search).get('ref') || '';
+  const searchParams = new URLSearchParams(window.location.search);
+  const urlRefCode = (searchParams.get('ref') || '').trim();
+  const isRegisterUrl =
+    Boolean(urlRefCode) ||
+    window.location.pathname === '/register' ||
+    window.location.hash.startsWith('#/register') ||
+    searchParams.get('mode') === 'register';
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -132,18 +139,29 @@ export default function App() {
     let active = true;
     (async () => {
       try {
+        const hasToken = Boolean(getStoredToken());
         const [cfgResult, sessionResult] = await Promise.allSettled([
           fetchAppConfig(),
-          fetchSession(),
+          hasToken ? fetchSession() : Promise.reject(new Error('No session')),
         ]);
         if (!active) return;
         if (cfgResult.status === 'fulfilled') {
           setAppConfig(cfgResult.value);
         }
         if (sessionResult.status === 'fulfilled') {
-          setBundle(sessionResult.value);
+          const loaded = sessionResult.value;
+          setBundle(loaded);
+          if (
+            isRegisterUrl &&
+            (!urlRefCode ||
+              urlRefCode.toUpperCase() !== (loaded.user.referralCode || '').toUpperCase())
+          ) {
+            setAuthInitialMode('register');
+            setSubPage('auth');
+          }
         } else {
           setBundle(null);
+          setAuthInitialMode('register');
         }
       } finally {
         if (active) {
@@ -154,7 +172,7 @@ export default function App() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [isRegisterUrl, urlRefCode]);
 
   // Real-time sync: Express SSE when Node server is active, BroadcastChannel/storage on static hosting
   useEffect(() => {
@@ -228,11 +246,24 @@ export default function App() {
     clearStoredToken();
     void signOutFirebase().catch(() => {});
     setBundle(null);
+    setAuthInitialMode('login');
     setSubPage('auth');
+  };
+
+  const clearReferralUrl = () => {
+    if (
+      window.location.search.includes('ref=') ||
+      window.location.search.includes('mode=') ||
+      window.location.pathname === '/register' ||
+      window.location.hash.startsWith('#/register')
+    ) {
+      window.history.replaceState(null, '', '/');
+    }
   };
 
   const handleLogin = async (phone: string, password: string) => {
     const next = await loginAccount(phone, password);
+    clearReferralUrl();
     setBundle(next);
     setSubPage(null);
     setActiveTab('home');
@@ -247,6 +278,7 @@ export default function App() {
     referralCode?: string;
   }) => {
     const next = await registerAccount(payload);
+    clearReferralUrl();
     setBundle(next);
     setSubPage(null);
     setActiveTab('home');
@@ -265,6 +297,7 @@ export default function App() {
       displayName: fbUser.displayName,
       referralCode: referralCode || urlRefCode,
     });
+    clearReferralUrl();
     setBundle(next);
     setSubPage(null);
     setActiveTab('home');
@@ -439,6 +472,7 @@ export default function App() {
           onGoogleLogin={handleGoogleLogin}
           onCancel={bundle?.user ? () => setSubPage(null) : undefined}
           initialReferralCode={urlRefCode}
+          initialMode={isRegisterUrl ? 'register' : authInitialMode}
         />
       </div>
     );

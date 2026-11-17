@@ -65,7 +65,7 @@ export function getStoredToken(): string | null {
   if (safeStorageGet(localStorage, LOGOUT_FLAG) === 'true') {
     return null;
   }
-  return safeStorageGet(localStorage, TOKEN_KEY) || 'demo_session_token';
+  return safeStorageGet(localStorage, TOKEN_KEY);
 }
 
 export function setStoredToken(token: string): void {

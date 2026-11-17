@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Eye, EyeOff, Lock, Phone, Tag, User } from 'lucide-react';
 import { AUTH_GRILLE_IMAGE } from '../data/plans';
 import { BrandMark } from './BrandMark';
@@ -14,6 +14,7 @@ interface AuthViewProps {
   onGoogleLogin?: (referralCode?: string) => Promise<void>;
   onCancel?: () => void;
   initialReferralCode?: string;
+  initialMode?: 'login' | 'register';
 }
 
 export function AuthView({
@@ -22,8 +23,11 @@ export function AuthView({
   onGoogleLogin,
   onCancel,
   initialReferralCode = '',
+  initialMode = 'register',
 }: AuthViewProps) {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [mode, setMode] = useState<'login' | 'register'>(
+    initialReferralCode ? 'register' : initialMode
+  );
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -32,6 +36,15 @@ export function AuthView({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    if (initialReferralCode) {
+      setReferralCode(initialReferralCode);
+      setMode('register');
+    } else {
+      setMode(initialMode);
+    }
+  }, [initialReferralCode, initialMode]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
