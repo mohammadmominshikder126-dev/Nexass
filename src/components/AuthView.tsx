@@ -63,18 +63,6 @@ export function AuthView({
     }
   };
 
-  const handleDemoLogin = async () => {
-    setError(null);
-    setLoading(true);
-    try {
-      await onLogin('+8801789083100', '123456');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'ডেমো সাইন ইন ব্যর্থ হয়েছে');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleGoogleSignIn = async () => {
     if (!onGoogleLogin) return;
     setError(null);
@@ -89,41 +77,73 @@ export function AuthView({
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center py-6 px-4 bg-[#081123]">
-      <div className="w-full max-w-sm rounded-[28px] overflow-hidden bg-[#060E24] border border-slate-800 shadow-2xl">
-        {/* Top Automotive Grille Banner */}
-        <div className="relative h-44 bg-[#071535] flex flex-col justify-between p-4">
-          {!imgError && (
-            <img
-              src={AUTH_GRILLE_IMAGE}
-              alt="অটোমোটিভ গ্রিল ব্যানার"
-              referrerPolicy="no-referrer"
-              onError={() => setImgError(true)}
-              className="absolute inset-0 w-full h-full object-cover opacity-80"
-            />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-b from-blue-950/50 via-blue-900/20 to-[#060E24]/85" />
-          <div className="relative z-10 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-white">
-              <BrandMark className="w-7 h-6" />
-              <span className="font-display text-sm font-bold">
-                Nexas<span className="text-[#00D2FF]">World</span>
-              </span>
-            </div>
-            {onCancel && (
-              <button
-                type="button"
-                onClick={onCancel}
-                className="text-xs font-medium text-white bg-black/50 px-3 py-1.5 rounded-full"
-              >
-                ফিরে যান
-              </button>
-            )}
+    <div className="min-h-screen w-full flex flex-col bg-white">
+      {/* Full-Width Top Automotive Grille Banner */}
+      <div className="relative w-full h-52 sm:h-60 bg-[#071535] flex flex-col justify-between p-5 shrink-0">
+        {!imgError && (
+          <img
+            src={AUTH_GRILLE_IMAGE}
+            alt="অটোমোটিভ গ্রিল ব্যানার"
+            referrerPolicy="no-referrer"
+            onError={() => setImgError(true)}
+            className="absolute inset-0 w-full h-full object-cover opacity-80"
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-b from-blue-950/50 via-blue-900/25 to-[#060E24]/90" />
+        <div className="relative z-10 w-full max-w-md mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-2.5 text-white">
+            <BrandMark className="w-8 h-7" />
+            <span className="font-display text-base sm:text-lg font-bold">
+              Nexas<span className="text-[#00D2FF]">World</span>
+            </span>
           </div>
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="text-xs font-medium text-white bg-black/50 px-3.5 py-1.5 rounded-full"
+            >
+              ফিরে যান
+            </button>
+          )}
         </div>
+      </div>
 
-        {/* Overlapping White Login Sheet */}
-        <div className="relative -mt-6 bg-white text-slate-900 rounded-[26px] px-5 py-7 space-y-4">
+      {/* Full-Screen Overlapping White Auth Sheet */}
+      <div className="relative flex-1 w-full -mt-7 bg-white text-slate-900 rounded-t-[28px] px-5 sm:px-8 pt-7 pb-6 flex flex-col justify-between">
+        <div className="w-full max-w-md mx-auto space-y-4">
+          {/* Full-Screen Mode Switcher (Registration / Login) */}
+          <div className="grid grid-cols-2 gap-1.5 p-1 rounded-full bg-slate-100 border border-slate-200">
+            <button
+              type="button"
+              onClick={() => {
+                setError(null);
+                setMode('register');
+              }}
+              className={`min-h-[40px] rounded-full text-xs sm:text-sm font-bold transition-all ${
+                mode === 'register'
+                  ? 'bg-gradient-to-r from-[#2563EB] to-[#0EA5E9] text-white shadow'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              রেজিস্ট্রেশন
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setError(null);
+                setMode('login');
+              }}
+              className={`min-h-[40px] rounded-full text-xs sm:text-sm font-bold transition-all ${
+                mode === 'login'
+                  ? 'bg-gradient-to-r from-[#2563EB] to-[#0EA5E9] text-white shadow'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              লগইন
+            </button>
+          </div>
+
           {mode === 'register' && (
             <div className="p-2.5 rounded-xl bg-sky-50 border border-sky-200 text-sky-800 text-xs font-semibold text-center">
               নতুন অ্যাকাউন্ট নিবন্ধন করলেই পাচ্ছেন 150 BDT ফ্রি বোনাস!
@@ -145,7 +165,7 @@ export function AuthView({
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="আপনার পুরো নাম"
-                  className="w-full min-h-[46px] pl-11 pr-4 rounded-full border border-slate-300 bg-white text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600"
+                  className="w-full min-h-[48px] pl-11 pr-4 rounded-full border border-slate-300 bg-white text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600"
                 />
               </div>
             )}
@@ -158,7 +178,7 @@ export function AuthView({
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+880 আপনার মোবাইল নম্বর লিখুন"
-                className="w-full min-h-[46px] pl-11 pr-4 rounded-full border border-slate-300 bg-white text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600"
+                className="w-full min-h-[48px] pl-11 pr-4 rounded-full border border-slate-300 bg-white text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600"
               />
             </div>
 
@@ -170,7 +190,7 @@ export function AuthView({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="লগইন পাসওয়ার্ড"
-                className="w-full min-h-[46px] pl-11 pr-11 rounded-full border border-slate-300 bg-white text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600"
+                className="w-full min-h-[48px] pl-11 pr-11 rounded-full border border-slate-300 bg-white text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600"
               />
               <button
                 type="button"
@@ -190,7 +210,7 @@ export function AuthView({
                   value={referralCode}
                   onChange={(e) => setReferralCode(e.target.value)}
                   placeholder="ইনভাইটেশন কোড (ঐচ্ছিক)"
-                  className="w-full min-h-[46px] pl-11 pr-4 rounded-full border border-slate-300 bg-white font-mono text-xs sm:text-sm uppercase text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600"
+                  className="w-full min-h-[48px] pl-11 pr-4 rounded-full border border-slate-300 bg-white font-mono text-xs sm:text-sm uppercase text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600"
                 />
               </div>
             )}
@@ -198,7 +218,7 @@ export function AuthView({
             <button
               type="submit"
               disabled={loading}
-              className="w-full min-h-[46px] mt-1 rounded-full bg-gradient-to-r from-[#2563EB] to-[#0EA5E9] text-white font-semibold text-sm shadow-lg shadow-blue-500/30 hover:opacity-95 active:scale-[0.98] transition-all disabled:opacity-50"
+              className="w-full min-h-[48px] mt-1 rounded-full bg-gradient-to-r from-[#2563EB] to-[#0EA5E9] text-white font-semibold text-sm shadow-lg shadow-blue-500/30 hover:opacity-95 active:scale-[0.98] transition-all disabled:opacity-50"
             >
               {loading
                 ? 'অপেক্ষা করুন...'
@@ -245,7 +265,7 @@ export function AuthView({
               type="button"
               disabled={loading}
               onClick={handleGoogleSignIn}
-              className="w-full min-h-[42px] rounded-full border border-slate-300 bg-white text-slate-900 text-xs sm:text-sm font-semibold hover:bg-slate-50 active:scale-[0.98] transition-all inline-flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full min-h-[44px] rounded-full border border-slate-300 bg-white text-slate-900 text-xs sm:text-sm font-semibold hover:bg-slate-50 active:scale-[0.98] transition-all inline-flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
                 <path
@@ -268,23 +288,14 @@ export function AuthView({
               Google দিয়ে লগইন করুন
             </button>
           )}
-
-          <button
-            type="button"
-            disabled={loading}
-            onClick={handleDemoLogin}
-            className="w-full min-h-[40px] rounded-full border border-slate-300 text-slate-700 text-xs font-medium hover:bg-slate-50"
-          >
-            ডেমো লগইন (+8801789083100)
-          </button>
         </div>
+      </div>
 
-        {/* Bottom Royal Blue Wave Footer */}
-        <div className="h-14 bg-[#071535] relative overflow-hidden">
-          <svg viewBox="0 0 400 60" preserveAspectRatio="none" className="w-full h-full" aria-hidden="true">
-            <path d="M0,25 C120,55 240,5 400,30 L400,60 L0,60 Z" fill="#1D4ED8" fillOpacity="0.45" />
-          </svg>
-        </div>
+      {/* Bottom Full-Width Royal Blue Wave Footer */}
+      <div className="w-full h-14 bg-[#071535] relative overflow-hidden shrink-0">
+        <svg viewBox="0 0 400 60" preserveAspectRatio="none" className="w-full h-full" aria-hidden="true">
+          <path d="M0,25 C120,55 240,5 400,30 L400,60 L0,60 Z" fill="#1D4ED8" fillOpacity="0.45" />
+        </svg>
       </div>
     </div>
   );

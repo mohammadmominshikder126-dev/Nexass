@@ -106,141 +106,12 @@ function createDefaultConfig(): PublicAppConfig {
 }
 
 function createSeedDatabase(): DatabaseSchema {
-  const demoUserId = 'usr_demo_83100';
-  const yesterdayIso = new Date(Date.now() - 25 * 3600 * 1000).toISOString();
-  const twoDaysAgo = new Date(Date.now() - 2 * 86400000).toISOString();
-  const fiveDaysAgo = new Date(Date.now() - 5 * 86400000).toISOString();
-
-  const demoUser: StoredUser = {
-    id: demoUserId,
-    phone: '+8801789083100',
-    fullName: 'Arif Rahman',
-    referralCode: 'NXW83100',
-    rechargeBalance: 2500,
-    withdrawalBalance: 850,
-    invitedEarnings: 530,
-    payoutMethod: 'bKash',
-    payoutAccount: '01789083100',
-    bankHolderName: 'Arif Rahman',
-    bankName: 'bKash',
-    bankAccountNumber: '01789083100',
-    bankCardVerified: true,
-    lastSalaryClaimDate: yesterdayIso.slice(0, 10),
-    redeemedCodes: [],
-    createdAt: fiveDaysAgo,
-    passwordHash: hashPassword('123456'),
-  };
-
-  const demoProducts: UserProduct[] = [
-    {
-      id: 'prd_seed_01',
-      planId: 'vip-1',
-      tier: 'VIP 1',
-      modelName: 'Obsidian Coupe GT',
-      price: 500,
-      dailyIncome: 10,
-      totalIncome: 300,
-      validityDays: 30,
-      daysClaimed: 2,
-      lastClaimedAt: yesterdayIso,
-      purchasedAt: twoDaysAgo,
-      image: VIP_PLANS[0].image,
-      status: 'Active',
-    },
-  ];
-
-  const demoTransactions: TransactionRecord[] = [
-    {
-      id: 'txn_seed_00',
-      type: 'Registration Bonus',
-      amount: 150,
-      status: 'Completed',
-      note: 'নতুন অ্যাকাউন্ট নিবন্ধন বোনাস ১৫০ টাকা',
-      createdAt: fiveDaysAgo,
-    },
-    {
-      id: 'txn_seed_01',
-      type: 'Recharge',
-      amount: 3000,
-      method: 'bKash',
-      channel: 'GOPAY-BK',
-      txId: 'BKX904821A',
-      status: 'Completed',
-      note: 'Send Money via bKash (GOPAY-BK)',
-      createdAt: fiveDaysAgo,
-    },
-    {
-      id: 'txn_seed_02',
-      type: 'Investment',
-      amount: 500,
-      status: 'Completed',
-      note: 'Activated VIP 1 — Obsidian Coupe GT',
-      createdAt: twoDaysAgo,
-    },
-    {
-      id: 'txn_seed_03',
-      type: 'Referral Bonus',
-      amount: 375,
-      status: 'Completed',
-      note: 'Level 1 Commission (25%) from +88019****214',
-      createdAt: twoDaysAgo,
-    },
-    {
-      id: 'txn_seed_04',
-      type: 'Daily Income',
-      amount: 10,
-      status: 'Completed',
-      note: 'VIP 1 daily return payout',
-      createdAt: yesterdayIso,
-    },
-  ];
-
-  const demoTeam: TeamMember[] = [
-    {
-      id: 'tm_seed_01',
-      phone: '+8801922014214',
-      level: 1,
-      joinedAt: twoDaysAgo,
-      validVip: true,
-      totalInvested: 1500,
-      commissionEarned: 375,
-    },
-    {
-      id: 'tm_seed_02',
-      phone: '+8801841229901',
-      level: 1,
-      joinedAt: twoDaysAgo,
-      validVip: true,
-      totalInvested: 500,
-      commissionEarned: 125,
-    },
-    {
-      id: 'tm_seed_03',
-      phone: '+8801611487720',
-      level: 2,
-      joinedAt: yesterdayIso,
-      validVip: true,
-      totalInvested: 1500,
-      commissionEarned: 30,
-    },
-  ];
-
   return {
-    users: {
-      [demoUserId]: demoUser,
-    },
-    sessions: {
-      demo_session_token: demoUserId,
-    },
-    products: {
-      [demoUserId]: demoProducts,
-    },
-    transactions: {
-      [demoUserId]: demoTransactions,
-    },
-    team: {
-      [demoUserId]: demoTeam,
-    },
+    users: {},
+    sessions: {},
+    products: {},
+    transactions: {},
+    team: {},
     deposits: [],
     withdrawals: [],
     config: createDefaultConfig(),
@@ -259,6 +130,7 @@ function loadDatabase(): DatabaseSchema {
       // Backfill new schema keys seamlessly if an older DB exists
       const users: Record<string, StoredUser> = {};
       for (const [id, u] of Object.entries(parsed.users || seeded.users)) {
+        if (id === 'usr_demo_83100') continue;
         users[id] = {
           ...u,
           bankHolderName: u.bankHolderName ?? u.fullName ?? '',
@@ -281,13 +153,27 @@ function loadDatabase(): DatabaseSchema {
       }
       if (!Array.isArray(cfg.vipPlans) || cfg.vipPlans.length === 0) {
         cfg.vipPlans = VIP_PLANS.map((p) => ({ ...p }));
+      } else {
+        cfg.vipPlans = cfg.vipPlans.map((p) =>
+          p.id === 'vip-1' && p.price === 500 && p.dailyIncome === 10
+            ? { ...p, price: 300, dailyIncome: 80, totalIncome: 2400 }
+            : p
+        );
       }
+      const sessions = { ...(parsed.sessions || seeded.sessions) };
+      const products = { ...(parsed.products || seeded.products) };
+      const transactions = { ...(parsed.transactions || seeded.transactions) };
+      const team = { ...(parsed.team || seeded.team) };
+      delete sessions['demo_session_token'];
+      delete products['usr_demo_83100'];
+      delete transactions['usr_demo_83100'];
+      delete team['usr_demo_83100'];
       return {
         users,
-        sessions: parsed.sessions || seeded.sessions,
-        products: parsed.products || seeded.products,
-        transactions: parsed.transactions || seeded.transactions,
-        team: parsed.team || seeded.team,
+        sessions,
+        products,
+        transactions,
+        team,
         deposits: parsed.deposits || [],
         withdrawals: parsed.withdrawals || [],
         config: cfg,
@@ -345,9 +231,10 @@ function buildBundle(userId: string, token: string): UserAccountBundle {
 
 function getAuthenticatedUserId(req: express.Request): { userId: string; token: string } | null {
   const authHeader = req.headers.authorization || '';
-  const token = authHeader.startsWith('Bearer ')
-    ? authHeader.slice(7).trim()
-    : 'demo_session_token';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  if (!token) {
+    return null;
+  }
   const userId = db.sessions[token];
   if (!userId || !db.users[userId]) {
     return null;

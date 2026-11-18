@@ -8,9 +8,9 @@ export const VIP_PLANS: VipPlan[] = [
     id: 'vip-1',
     tier: 'VIP 1',
     modelName: 'Obsidian Coupe GT',
-    price: 500,
-    dailyIncome: 10,
-    totalIncome: 300,
+    price: 300,
+    dailyIncome: 80,
+    totalIncome: 2400,
     validityDays: 30,
     image: '/src/assets/images/vip_coupe_gt_1794938615406.jpg',
     category: 'Starter',
@@ -72,7 +72,7 @@ export const VIP_PLANS: VipPlan[] = [
   },
 ];
 
-export const RECHARGE_PRESETS = [500, 1500, 3500, 5500, 1100, 25000, 50000, 100000];
+export const RECHARGE_PRESETS = [300, 500, 1500, 3500, 5500, 11000, 25000, 50000];
 
 export const GIFT_CODE_CATALOG: Record<string, { amount: number; label: string }> = {
   NEXAS100: { amount: 100, label: 'Starter Bonus' },

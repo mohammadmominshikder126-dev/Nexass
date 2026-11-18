@@ -104,131 +104,12 @@ export function createDefaultPublicConfig(): PublicAppConfig {
 }
 
 function createSeedLocalDatabase(): LocalDatabaseSchema {
-  const demoUserId = 'usr_demo_83100';
-  const yesterdayIso = new Date(Date.now() - 25 * 3600 * 1000).toISOString();
-  const twoDaysAgo = new Date(Date.now() - 2 * 86400000).toISOString();
-  const fiveDaysAgo = new Date(Date.now() - 5 * 86400000).toISOString();
-
-  const demoUser: LocalStoredUser = {
-    id: demoUserId,
-    phone: '+8801789083100',
-    fullName: 'আরিফ রহমান',
-    referralCode: 'NXW83100',
-    rechargeBalance: 2500,
-    withdrawalBalance: 850,
-    invitedEarnings: 530,
-    payoutMethod: 'bKash',
-    payoutAccount: '01789083100',
-    bankHolderName: 'আরিফ রহমান',
-    bankName: 'bKash',
-    bankAccountNumber: '01789083100',
-    bankCardVerified: true,
-    lastSalaryClaimDate: yesterdayIso.slice(0, 10),
-    redeemedCodes: [],
-    createdAt: fiveDaysAgo,
-    password: '123456',
-  };
-
-  const demoProducts: UserProduct[] = [
-    {
-      id: 'prd_seed_01',
-      planId: 'vip-1',
-      tier: 'VIP 1',
-      modelName: 'Obsidian Coupe GT',
-      price: 500,
-      dailyIncome: 10,
-      totalIncome: 300,
-      validityDays: 30,
-      daysClaimed: 2,
-      lastClaimedAt: yesterdayIso,
-      purchasedAt: twoDaysAgo,
-      image: VIP_PLANS[0].image,
-      status: 'Active',
-    },
-  ];
-
-  const demoTransactions: TransactionRecord[] = [
-    {
-      id: 'txn_seed_00',
-      type: 'Registration Bonus',
-      amount: 150,
-      status: 'Completed',
-      note: 'নতুন অ্যাকাউন্ট নিবন্ধন বোনাস 150 BDT',
-      createdAt: fiveDaysAgo,
-    },
-    {
-      id: 'txn_seed_01',
-      type: 'Recharge',
-      amount: 3000,
-      method: 'bKash',
-      channel: 'GOPAY-BK',
-      txId: 'BKX904821A',
-      status: 'Completed',
-      note: 'bKash (GOPAY-BK) সেন্ড মানি',
-      createdAt: fiveDaysAgo,
-    },
-    {
-      id: 'txn_seed_02',
-      type: 'Investment',
-      amount: 500,
-      status: 'Completed',
-      note: 'VIP 1 সক্রিয় হয়েছে — Obsidian Coupe GT',
-      createdAt: twoDaysAgo,
-    },
-    {
-      id: 'txn_seed_03',
-      type: 'Referral Bonus',
-      amount: 375,
-      status: 'Completed',
-      note: 'লেভেল 1 কমিশন (25%) · +88019****214',
-      createdAt: twoDaysAgo,
-    },
-    {
-      id: 'txn_seed_04',
-      type: 'Daily Income',
-      amount: 10,
-      status: 'Completed',
-      note: 'VIP 1 দৈনিক আয়',
-      createdAt: yesterdayIso,
-    },
-  ];
-
-  const demoTeam: TeamMember[] = [
-    {
-      id: 'tm_seed_01',
-      phone: '+8801922014214',
-      level: 1,
-      joinedAt: twoDaysAgo,
-      validVip: true,
-      totalInvested: 1500,
-      commissionEarned: 375,
-    },
-    {
-      id: 'tm_seed_02',
-      phone: '+8801841229901',
-      level: 1,
-      joinedAt: twoDaysAgo,
-      validVip: true,
-      totalInvested: 500,
-      commissionEarned: 125,
-    },
-    {
-      id: 'tm_seed_03',
-      phone: '+8801611487720',
-      level: 2,
-      joinedAt: yesterdayIso,
-      validVip: true,
-      totalInvested: 1500,
-      commissionEarned: 30,
-    },
-  ];
-
   return {
-    users: { [demoUserId]: demoUser },
-    sessions: { demo_session_token: demoUserId },
-    products: { [demoUserId]: demoProducts },
-    transactions: { [demoUserId]: demoTransactions },
-    team: { [demoUserId]: demoTeam },
+    users: {},
+    sessions: {},
+    products: {},
+    transactions: {},
+    team: {},
     deposits: [],
     withdrawals: [],
     config: createDefaultPublicConfig(),
@@ -244,13 +125,29 @@ function readDb(): LocalDatabaseSchema {
       const cfg = parsed.config || seed.config;
       if (!Array.isArray(cfg.vipPlans) || cfg.vipPlans.length === 0) {
         cfg.vipPlans = VIP_PLANS.map((p) => ({ ...p }));
+      } else {
+        cfg.vipPlans = cfg.vipPlans.map((p) =>
+          p.id === 'vip-1' && p.price === 500 && p.dailyIncome === 10
+            ? { ...p, price: 300, dailyIncome: 80, totalIncome: 2400 }
+            : p
+        );
       }
+      const users = { ...(parsed.users || seed.users) };
+      const sessions = { ...(parsed.sessions || seed.sessions) };
+      const products = { ...(parsed.products || seed.products) };
+      const transactions = { ...(parsed.transactions || seed.transactions) };
+      const team = { ...(parsed.team || seed.team) };
+      delete users['usr_demo_83100'];
+      delete sessions['demo_session_token'];
+      delete products['usr_demo_83100'];
+      delete transactions['usr_demo_83100'];
+      delete team['usr_demo_83100'];
       return {
-        users: parsed.users || seed.users,
-        sessions: parsed.sessions || seed.sessions,
-        products: parsed.products || seed.products,
-        transactions: parsed.transactions || seed.transactions,
-        team: parsed.team || seed.team,
+        users,
+        sessions,
+        products,
+        transactions,
+        team,
         deposits: Array.isArray(parsed.deposits) ? parsed.deposits : [],
         withdrawals: Array.isArray(parsed.withdrawals) ? parsed.withdrawals : [],
         config: cfg,
@@ -320,12 +217,14 @@ function requireUser(
   db: LocalDatabaseSchema,
   token: string | null
 ): { userId: string; token: string } {
-  const t = token || 'demo_session_token';
-  const userId = db.sessions[t];
+  if (!token) {
+    throw new Error('অনুগ্রহ করে আগে লগইন করুন।');
+  }
+  const userId = db.sessions[token];
   if (!userId || !db.users[userId]) {
     throw new Error('অনুগ্রহ করে আগে লগইন করুন।');
   }
-  return { userId, token: t };
+  return { userId, token };
 }
 
 export function localGetConfig(): PublicAppConfig {
